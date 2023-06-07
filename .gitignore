@@ -20,3 +20,4 @@
 # Go workspace file
 cat-project
 go.work
+*.env

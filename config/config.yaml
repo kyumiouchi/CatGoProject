@@ -1,4 +1,6 @@
 http:
-  port: 8080
+  basicAuth:
+    user: "pass"
+  port: "8080"
 logging:
   level: 5

@@ -1,24 +1,44 @@
 package cmd
 
 import (
+	"cat-project/config"
 	"cat-project/internal/logging"
 	"fmt"
-	"gopkg.in/yaml.v3"
-	"os"
-	"path/filepath"
+	"github.com/julienschmidt/httprouter"
+	"github.com/sirupsen/logrus"
+	"net/http"
 )
 
+func hello(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	fmt.Fprintf(w, "hello")
+}
+
+func world(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	fmt.Fprintf(w, "world")
+}
+
+func nameHello(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	fmt.Fprintf(w, "hello, %s!\n", p.ByName("name"))
+}
+
 func Start() {
-	fileName, _:= filepath.Abs("./config/config.yaml")
-	yamlBytes, err := os.ReadFile(fileName)
+	ycg := config.NewYamlConfigurationGetter()
+	cfg, err := ycg.GetConfig()
 	if err != nil {
-		fmt.Println(err)
+		logrus.WithError(err).Fatal("Failed get config") // panic
 		return
 	}
-	m := map[string] interface{}{}
-	yaml.Unmarshal(yamlBytes, m)
-	logMap := m["logging"].(map[string] interface{})
-	logLevel := logMap["level"].(int)
-	logger := logging.New(logging.Config{LogLevel: logLevel})
-	logger.Info("Message Hello World")
+	logger := logging.New(logging.Config{LogLevel: cfg.Logging.Level})
+	logger.Infof("Message hello world port: %s", cfg.Http.Port)
+
+	mux := httprouter.New()
+	mux.GET("/hello/:name", nameHello)
+	mux.GET("/hello", hello)
+	mux.GET("/world", world)
+
+	server := http.Server{
+		Addr: "127.0.0.1:" + cfg.Http.Port,
+		Handler: mux,
+	}
+	server.ListenAndServe()
 }
